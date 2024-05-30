@@ -1,14 +1,12 @@
 import os
 import re
 import sqlite3
-import time
 
 import telebot
 import win32con
 import win32file
 from telebot import types
 
-import checkCard
 import checkUser
 import config
 import editUser
@@ -317,46 +315,42 @@ def callback_message(callback):
                          "Чтобы сделать заказ, отправьте команду <b>/order</b> или нажмите на кнопку <b>Заказ</b>",
                          parse_mode='html', reply_markup=markup1)
     elif callback.data == 'true_enter':
-        while check_file_lock('cards.xlsx'):
-            bot.send_message(config.manager_id,
-                             f"Пожалуйста, закройте cards.xlsx, чтобы пользователь мог продолжить оформление заказа.")
-            bot.send_message(callback.message.chat.id,
-                             f"Пожалуйста, подождите немного, пока идет проверка на наличие вашей карты.")
-            time.sleep(3)
-        user_states[callback.message.chat.id]['card'] = checkCard.check_card_status('cards.xlsx', user_states[
-            callback.message.chat.id]['phone'])
         if not user_states[callback.message.chat.id]['user_data']:
             # Доделать
             conn = sqlite3.connect('shop.sql')
             cur = conn.cursor()
             cur.execute(
-                f"INSERT INTO users(name, tgId, phone, has_card) VALUES ('{user_states[callback.message.chat.id]['name']}', '{user_states[callback.message.chat.id]['tgId']}', '{user_states[callback.message.chat.id]['phone']}', '{user_states[callback.message.chat.id]['card']}')")
+                f"INSERT INTO users(name, tgId, phone, has_card) VALUES ('{user_states[callback.message.chat.id]['name']}', '{user_states[callback.message.chat.id]['tgId']}', '{user_states[callback.message.chat.id]['phone']}', '{0}')")
             conn.commit()
             cur.close()
             conn.close()
-
+            user_states[callback.message.chat.id]['card'] = 0
         else:
-            if user_states[callback.message.chat.id]['user_data'][4] == 2 and user_states[callback.message.chat.id][
-                'card'] != 1:
-                user_states[callback.message.chat.id]['card'] = 2
-                consultation(callback)
-            elif (user_states[callback.message.chat.id]['user_data'][4] != 1) and user_states[callback.message.chat.id][
-                'card'] == 1:
-                editUser.update_user_card(user_states[callback.message.chat.id]['card'],
-                                          user_states[callback.message.chat.id]['tgId'])
+            user_states[callback.message.chat.id]['card'] = user_states[callback.message.chat.id]['user_data'][4]
 
-        if user_states[callback.message.chat.id]['card'] == 0:
-            user_states[callback.message.chat.id]['waiting_for_button'] = True
-            markup = types.InlineKeyboardMarkup()
-            bottom1 = types.InlineKeyboardButton('Хочу', callback_data='create_card')
-            bottom2 = types.InlineKeyboardButton('Не хочу', callback_data='continue_without_card')
-            markup.row(bottom1, bottom2)
-
-            bot.send_message(callback.message.chat.id, f'Мы заметили, что у вас нет нашей дисконтной карты😞 '
-                                                       f'Предлагаем вам создать ее, чтобы в дальнейшем приобретать наш товар по более выгодной цене)',
-                             reply_markup=markup)
-        elif user_states[callback.message.chat.id]['card'] == 1:
+        if user_states[callback.message.chat.id]['card'] == 1:
             consultation(callback)
+        else:
+            check_card(callback)
+    elif callback.data == 'card_true':
+        user_states[callback.message.chat.id]['card'] = 1
+        editUser.update_user_card(user_states[callback.message.chat.id]['card'],
+                                  user_states[callback.message.chat.id]['tgId'])
+        consultation(callback)
+    elif callback.data == 'card_false':
+        user_states[callback.message.chat.id]['waiting_for_button'] = True
+        user_states[callback.message.chat.id]['card'] = 0
+        markup = types.InlineKeyboardMarkup()
+        bottom1 = types.InlineKeyboardButton('Хочу', callback_data='create_card')
+        bottom2 = types.InlineKeyboardButton('Не хочу', callback_data='continue_without_card')
+        markup.row(bottom1, bottom2)
+
+        bot.send_message(callback.message.chat.id, f'Это очень грустно, что у вас нет нашей дисконтной карты😞 '
+                                                   f'Предлагаем вам создать ее, чтобы в дальнейшем приобретать наш товар по более выгодной цене)',
+                         reply_markup=markup)
+    elif callback.data == 'card_ignorance':
+        user_states[callback.message.chat.id]['card'] = 2
+        consultation(callback)
     elif callback.data == 'false_enter':
         user_states[callback.message.chat.id]['waiting_for_button'] = False
         markup1 = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -404,7 +398,7 @@ def callback_message(callback):
                                f'Ник пользователя - {callback.message.chat.username}\n'
                                f'ФИО - {user_states[callback.message.chat.id]['name']}\n'
                                f'Номер телефона - {user_states[callback.message.chat.id]['phone']}\n'
-                               f'Информация о наличии карты - {"Есть карта" if user_states[callback.message.chat.id]['card'] == 1 else ("Карта создаётся" if user_states[callback.message.chat.id]['card'] == 2 else "Нет карты")}')
+                               f'Информация о наличии карты - {"Есть карта" if user_states[callback.message.chat.id]['card'] == 1 else ("Нужно проверить о наличии" if user_states[callback.message.chat.id]['card'] == 2 else "Нет карты")}')
 
         bot.send_message(callback.message.chat.id,
                          f'Перейдите по следующей ссылке, чтобы связаться с менеджером. Обязательно отправьте артикул своего товара, чтобы менеджер смог вас понять)\n\n'
@@ -451,9 +445,6 @@ def process_birthday_input(callback, message):
                                                 f'ФИО - {user_states[callback.message.chat.id]['name']}\n'
                                                 f'Номер телефона - {user_states[callback.message.chat.id]['phone']}\n'
                                                 f'Дата рождения - {user_states[callback.message.chat.id]['birthday']}')
-
-            editUser.update_user_card(2, user_states[callback.message.chat.id]['tgId'])
-            user_states[callback.message.chat.id]['card'] = 2
             consultation(callback)
         else:
             bot.send_message(callback.message.chat.id,
@@ -494,7 +485,7 @@ def end_of_work(message):
                                        f'Ник пользователя - {message.from_user.username}\n'
                                        f'ФИО - {user_states[message.chat.id]['name']}\n'
                                        f'Номер телефона - {user_states[message.chat.id]['phone']}\n'
-                                       f'Информация о наличии карты - {"Есть карта" if user_states[message.chat.id]['card'] == 1 else ("Карта создаётся" if user_states[message.chat.id]['card'] == 2 else "Нет карты")}')
+                                       f'Информация о наличии карты - {"Есть карта" if user_states[message.chat.id]['card'] == 1 else ("Нужно проверить о наличии" if user_states[message.chat.id]['card'] == 2 else "Нет карты")}')
 
                 del user_states[message.chat.id]['price']
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -630,6 +621,19 @@ def get_all(message):
         bot.send_message(message.chat.id, "Я не умею обрабатывать такие сообщения(\n"
                                           "Пожалуйста, введите корректный номер телефона (номер должен состоять из 11 цифр и начинаться на 79).")
         bot.register_next_step_handler(message, get_all)
+
+
+def check_card(callback):
+    markup = types.InlineKeyboardMarkup()
+    bottom1 = types.InlineKeyboardButton("Есть", callback_data="card_true")
+    bottom2 = types.InlineKeyboardButton("Не имею", callback_data="card_false")
+    bottom3 = types.InlineKeyboardButton("Не помню", callback_data="card_ignorance")
+    markup.row(bottom1, bottom2)
+    markup.add(bottom3)
+
+    bot.send_message(callback.message.chat.id,
+                     f'Имеется ли у вас дисконтная карта, привязанная к данному номеру - {user_states[callback.message.chat.id]['phone']}',
+                     reply_markup=markup)
 
 
 def check_button_press(message):
