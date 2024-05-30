@@ -1,18 +1,18 @@
-import getInfAboutProduct
-import telebot
-import config
-import checkCard
+import os
+import re
 import sqlite3
-import checkUser
-import editUser
-import win32file
-import win32con
 import time
 
+import telebot
+import win32con
+import win32file
 from telebot import types
 
-import re
-import os
+import checkCard
+import checkUser
+import config
+import editUser
+import getInfAboutProduct
 
 user_states = {}
 
@@ -123,7 +123,7 @@ def get_token(message):
 
                 # Отправка сообщения с данными о товаре и фотографией
                 file_path = os.path.join('photos',
-                                         f'{user_states[message.chat.id]['product_data'][1]}.jpg')  # Путь к файлу в новой папке
+                                         f'{user_states[message.chat.id]['product_data'][4]}.jpg')  # Путь к файлу в новой папке
                 img = open(f"{file_path}", 'rb')
 
                 bot.send_photo(message.chat.id, img,
@@ -240,7 +240,7 @@ def user_phone(message):
 
 def consult2(message):
     file_path = os.path.join('photos',
-                             f'{user_states[message.chat.id]['product_data'][1]}.jpg')  # Путь к файлу в новой папке
+                             f'{user_states[message.chat.id]['product_data'][4]}.jpg')  # Путь к файлу в новой папке
     img = open(f"{file_path}", 'rb')
     # Отправка сообщения с данными о товаре и фотографией
     bot.send_photo(config.manager_id, img,
@@ -374,8 +374,6 @@ def callback_message(callback):
         markup.add(bottom3)
         bot.send_message(callback.message.chat.id, f'Выберите, пожалуйста, какие данные поменялись🙃',
                          reply_markup=markup)
-        # user_states[callback.message.chat.id]['waiting_for_button'] = True
-        # bot.register_next_step_handler(callback.message, check_button_press)
     elif callback.data == 'create_card':
         user_states[callback.message.chat.id]['waiting_for_button'] = False
         bot.send_message(callback.message.chat.id, "Введите, пожалуйста, вашу дату рождения в формате: ДД.ММ.ГГГГ\n"
@@ -392,7 +390,7 @@ def callback_message(callback):
     elif callback.data == 'advice':
         user_states[callback.message.chat.id]['waiting_for_button'] = False
         file_path = os.path.join('photos',
-                                 f'{user_states[callback.message.chat.id]['product_data'][1]}.jpg')  # Путь к файлу в новой папке
+                                 f'{user_states[callback.message.chat.id]['product_data'][4]}.jpg')  # Путь к файлу в новой папке
         img = open(f"{file_path}", 'rb')
         # Отправка сообщения с данными о товаре и фотографией
         bot.send_photo(config.manager_id, img,
@@ -482,7 +480,7 @@ def end_of_work(message):
             if float(user_states[message.chat.id]['size']) <= float(
                     user_states[message.chat.id]['product_data'][3].split(" ")[0]):
                 file_path = os.path.join('photos',
-                                         f'{user_states[message.chat.id]['product_data'][1]}.jpg')  # Путь к файлу в новой папке
+                                         f'{user_states[message.chat.id]['product_data'][4]}.jpg')  # Путь к файлу в новой папке
                 img = open(f"{file_path}", 'rb')
                 # Отправка сообщения с данными о товаре и фотографией
                 bot.send_photo(config.manager_id, img,
