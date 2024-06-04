@@ -50,5 +50,3 @@ def create_card(filename, fio, phone, birthday):
     finally:
         wb.save(filename)
         wb.close()
-
-# create_card('cards.xlsx', 'Хрушков Степан Игоревич', "79965677951", "10.01.2005")
