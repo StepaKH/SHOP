@@ -251,7 +251,7 @@ def pochta(message):
 @bot.message_handler(func=lambda message: message.text.lower() == 'сдэк')
 def sdek(message):
     bot.send_message(message.chat.id,
-                     "Перейдите, пожалуйста, по ссылке -> https://www.cdek.ru/ru/tracking/?order_id=1550105567\n"
+                     "Перейдите, пожалуйста, по ссылке -> https://www.cdek.ru/ru/tracking/\n"
                      "На сайте в поле *номер заказа* нужно ввести трек-номер вашего заказа, больше от вас ничего не потребуется)",
                      reply_markup=types.ReplyKeyboardRemove())
 
